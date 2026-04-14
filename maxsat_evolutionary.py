@@ -13,25 +13,39 @@ class GeneticAlgorithm:
     def __init__(self, wdimacs):
         #np.random.seed(21)
         self.N = wdimacs['N']
+        self.M = wdimacs['M']
         self.clauses = wdimacs['clauses']
 
-        self.N_pop = 512
-        self.N_parents = 128
-        self.N_child = 512
+        self.N_pop = 1024
+        self.N_parents = 256
+        self.N_child = 1024
+        self.N_elite = 32
 
-        self.N_elite = 16
+        self.pm = 1 / self.N
+
+        # ----- Heuristics
+        pos_w, neg_w = self.generate_heuristic_weights()
+        self.pos_w = pos_w; self.neg_w = neg_w
+        # ----------------
+
+        
+
 
     def run(self, time_budget):
         start_time = time.time()
 
-        pop = np.random.rand(self.N_pop,self.N) < 0.5
+        pop = self.initialise()
         fit = self.fitness(pop)
 
         gen = 0
         while time.time() - start_time < time_budget:
-            parents = self.selection(pop, fit)
+            parents = self.tournament_selection(pop, fit, k=4)
+
             children = self.crossover(parents)
-            pop_child = self.mutation(children, 0.05)
+            pop_child = self.mutation(children, self.pm)
+
+            #pop_child = self.heuristic_improvement_operator(pop_child)
+
             fit_child = self.fitness(pop_child)
             pop, fit = self.replacement(pop, pop_child, fit, fit_child)
 
@@ -41,10 +55,30 @@ class GeneticAlgorithm:
         best_i = np.argmax(fit)
         
         runtime = gen * max(self.N_child, self.N_pop)
-        result = {'t': runtime, 'nsat': fit[best_i], 'xbest': pop[best_i]}
+        result = {'t': runtime, 'nsat': fit[best_i], 'xbest': pop[best_i], 'gen': gen, 'pop_size': max(self.N_child, self.N_pop)}
         return result
 
 
+    def initialise(self):
+        total_w = self.pos_w - self.neg_w
+        init_pop = np.random.rand(self.N_pop, self.N) < total_w
+        return init_pop
+    
+
+    def initialise(self, temperature=1.0):
+        def _default_prob_fn(weights, temperature=1.0):
+            return 1.0 / (1.0 + np.exp(-weights / temperature))
+
+        total_w = self.pos_w - self.neg_w  # shape: (N,)
+        probs = _default_prob_fn(total_w, temperature)
+
+        init_pop = np.random.rand(self.N_pop, self.N) < probs
+
+        return init_pop
+
+
+    #def heuristic_improvement_operator(self, p):
+    #    return p
 
     def fitness(self, p):
         pop = p.astype(bool)
@@ -59,15 +93,29 @@ class GeneticAlgorithm:
         return scores
 
 
-    def selection(self, p, fit):
+    def tournament_selection(self, p, fit, k=2):
         N = p.shape[0]
         parents = []
 
         for _ in range(self.N_parents):
-            i, j = np.random.randint(0, N, 2)
-            winner = i if fit[i] > fit[j] else j
+            idx = np.random.randint(0, N, size=k)
+            winner = idx[np.argmax(fit[idx])]
             parents.append(p[winner])
+
         return np.array(parents)
+        
+    def ranking_selection(self, p, fit, s=1.5):
+        N = p.shape[0]
+
+        order = np.argsort(fit)
+        ranks = np.empty(N, dtype=int)
+        ranks[order] = np.arange(1, N + 1)
+
+        probs = ((2 - s) / N) + (2 * (ranks - 1) * (s - 1)) / (N * (N - 1))
+        probs = probs / probs.sum()
+
+        chosen = np.random.choice(N, size=self.N_parents, replace=True, p=probs)
+        return p[chosen]        
 
 
     def mutation(self, p, pm):
@@ -118,7 +166,19 @@ class GeneticAlgorithm:
         return p, fit
 
 
+    def generate_heuristic_weights(self):
+        pos_weights = np.zeros(self.N, dtype=int)
+        neg_weights = np.zeros(self.N, dtype=int)
 
+        for clause in self.clauses:
+            for v in clause:
+                i = abs(v) - 1
+                if v > 0:
+                    pos_weights[i] += 1
+                else:
+                    neg_weights[i] += 1
+
+        return pos_weights, neg_weights           
 
 
 
