@@ -2,3 +2,4 @@ __pycache__
 .venv/
 
 data/mse17-complete-unweighted-benchmarks.zip
+data/mse17-complete-unweighted-benchmarks

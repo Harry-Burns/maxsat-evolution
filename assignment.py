@@ -2,12 +2,52 @@ import argparse
 import numpy as np
 
 
+# region Question 3 - With Lookup - Question 5 (parameter testing)
+def maxstat_evolution_lookup_str(wdimacs_str, time_budget, repetitions):
+    from import_wdimacs import import_wdimacs
+    from maxsat_evolutionary import GeneticAlgorithm
+    from data.mse_lookup import lookup
+
+    wdimacs = import_wdimacs(wdimacs_str)
+
+    print(wdimacs_str)
+    print(f"Variables: {wdimacs['N']} - Clauses: {wdimacs['M']}")
+
+    n = wdimacs_str.split('/')[-1]
+    look = lookup(n) or {}
+    opt = look.get('optimum_cost')#
+    print(look)
+
+    results = []
+    for _ in range(repetitions):
+        ga = GeneticAlgorithm(wdimacs=wdimacs)
+        r = ga.run(time_budget=time_budget)
+        results.append(r)
+
+
+    with open("xbest_results.txt", "w", encoding="utf-8") as f:
+        for i, r in enumerate(results, 1):
+            f.write(f"Result {i}\n")
+            f.write("".join(str(int(x)) for x in r["xbest"]))
+            f.write("\n\n")
+
+    out = ""
+    for r in results:
+        out += f"{r['t']}\t{wdimacs['M'] - r['nsat']}/{opt or 'NaN'}\n"
+
+    return out
+# endregion
+
+
+
 # region Question 3
-def maxstat_evolution_str(wdimacs, time_budget, repetitions):
+def maxstat_evolution_str(wdimacs_str, time_budget, repetitions):
     from import_wdimacs import import_wdimacs
     from maxsat_evolutionary import GeneticAlgorithm
 
-    wdimacs = import_wdimacs(wdimacs)
+    wdimacs = import_wdimacs(wdimacs_str)
+
+    print(wdimacs_str)
 
     results = []
     for _ in range(repetitions):
@@ -17,7 +57,7 @@ def maxstat_evolution_str(wdimacs, time_budget, repetitions):
 
     out = ""
     for r in results:
-        out += f"{r['t']} {r['nsat']} ({wdimacs['M'] - r['nsat']}) {"".join([str(int(x)) for x in r['xbest']])}\n"
+        out += f"{r['t']}\t\t{r['nsat']} ({wdimacs['M'] - r['nsat']})\t{''.join([str(int(x)) for x in r['xbest']])}\n"
 
     return out
 # endregion
@@ -77,6 +117,10 @@ if __name__ == "__main__":
 
     elif args.question == 3:
         out = maxstat_evolution_str(args.wdimacs, args.time_budget, args.repetitions)
+
+    elif args.question == 1000:
+        out = maxstat_evolution_lookup_str(args.wdimacs, args.time_budget, args.repetitions)
+
 
     else:
         out = "Invalid 'question' parameter. Exiting..."
