@@ -1,12 +1,30 @@
 import time
 import numpy as np
-
+from numba import njit
 
 
 from import_wdimacs import import_wdimacs
 
 
 
+@njit
+def _fitness(pop, clause_lits, clause_offsets):
+    n_pop = pop.shape[0]
+    n_clauses = len(clause_offsets) - 1
+    scores = np.zeros(n_pop, dtype=np.int32)
+    for i in range(n_pop):
+        for c in range(n_clauses):
+            for k in range(clause_offsets[c], clause_offsets[c + 1]):
+                v = clause_lits[k]
+                if v > 0:
+                    if pop[i, v - 1]:
+                        scores[i] += 1
+                        break
+                else:
+                    if not pop[i, -v - 1]:
+                        scores[i] += 1
+                        break
+    return scores
 
 
 class GeneticAlgorithm:
@@ -28,6 +46,16 @@ class GeneticAlgorithm:
         self.pos_w = pos_w; self.neg_w = neg_w
         # ----------------
 
+
+        # ----- Quick fitness
+        lits = []
+        offsets = [0]
+        for clause in self.clauses:
+            lits.extend(clause)
+            offsets.append(len(lits))
+        self.clause_lits = np.array(lits, dtype=np.int32)
+        self.clause_offsets = np.array(offsets, dtype=np.int32)
+        # -------------------
         
 
 
@@ -81,17 +109,7 @@ class GeneticAlgorithm:
     #    return p
 
     def fitness(self, p):
-        pop = p.astype(bool)
-        scores = np.zeros(p.shape[0], dtype=np.int32)
-
-        for clause in self.clauses:
-            sat = np.zeros(p.shape[0], dtype=bool)
-            for v in clause:
-                i = abs(v) - 1
-                sat |= pop[:, i] if v > 0 else ~pop[:, i]
-            scores += sat
-        return scores
-
+        return _fitness(p.astype(bool), self.clause_lits, self.clause_offsets)
 
     def tournament_selection(self, p, fit, k=2):
         N = p.shape[0]
