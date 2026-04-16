@@ -45,13 +45,7 @@ class GeneticAlgorithm:
 
         self.pm = mutation_rate_factor / self.N
 
-        # ----- Heuristics
-        pos_w, neg_w = self.generate_heuristic_weights()
-        self.pos_w = pos_w; self.neg_w = neg_w
-        # ----------------
-
-
-        # ----- Quick fitness
+        # ----- Quicker fitness
         lits = []
         offsets = [0]
         for clause in self.clauses:
@@ -66,7 +60,6 @@ class GeneticAlgorithm:
     def run(self, time_budget):
         start_time = time.time()
 
-        pop = self.initialise()
         pop = self.initialise()
         fit = self.fitness(pop)
 
@@ -87,21 +80,15 @@ class GeneticAlgorithm:
         
         runtime = gen * max(self.N_child, self.N_pop)
         result = {'t': runtime, 'nsat': fit[best_i], 'xbest': pop[best_i], 'gen': gen, 'pop_size': max(self.N_child, self.N_pop)}
-        result = {'t': runtime, 'nsat': fit[best_i], 'xbest': pop[best_i], 'gen': gen, 'pop_size': max(self.N_child, self.N_pop)}
         return result
-
-
-    def initialise(self):
-        total_w = self.pos_w - self.neg_w
-        init_pop = np.random.rand(self.N_pop, self.N) < total_w
-        return init_pop
-    
 
     def initialise(self):
         def _default_prob_fn(weights, temperature):
             return 1.0 / (1.0 + np.exp(-weights / temperature))
+        
+        pos_w, neg_w = self.generate_heuristic_weights()
+        total_w = pos_w - neg_w  # shape: (N,)
 
-        total_w = self.pos_w - self.neg_w  # shape: (N,)
         probs = _default_prob_fn(total_w, self.init_temp)
 
         init_pop = np.random.rand(self.N_pop, self.N) < probs
@@ -120,28 +107,12 @@ class GeneticAlgorithm:
             winner = idx[np.argmax(fit[idx])]
             parents.append(p[winner])
 
-
         return np.array(parents)
         
-    def ranking_selection(self, p, fit, s=1.5):
-        N = p.shape[0]
-
-        order = np.argsort(fit)
-        ranks = np.empty(N, dtype=int)
-        ranks[order] = np.arange(1, N + 1)
-
-        probs = ((2 - s) / N) + (2 * (ranks - 1) * (s - 1)) / (N * (N - 1))
-        probs = probs / probs.sum()
-
-        chosen = np.random.choice(N, size=self.N_parents, replace=True, p=probs)
-        return p[chosen]        
-
-
     def mutation(self, p, pm):
         bit_flips = np.random.rand(*p.shape) < pm
         p[bit_flips] = ~p[bit_flips]
         return p
-
 
     def crossover(self, parents):
         children = []
@@ -165,7 +136,6 @@ class GeneticAlgorithm:
 
         return np.array(children)
 
-
     def replacement(self, p, p_child, fit, fit_child):
         p_rank = np.argsort(fit)[::-1]
 
@@ -184,7 +154,6 @@ class GeneticAlgorithm:
 
         return p, fit
 
-
     def generate_heuristic_weights(self):
         pos_weights = np.zeros(self.N, dtype=int)
         neg_weights = np.zeros(self.N, dtype=int)
@@ -197,21 +166,7 @@ class GeneticAlgorithm:
                 else:
                     neg_weights[i] += 1
 
-        return pos_weights, neg_weights           
-    def generate_heuristic_weights(self):
-        pos_weights = np.zeros(self.N, dtype=int)
-        neg_weights = np.zeros(self.N, dtype=int)
-
-        for clause in self.clauses:
-            for v in clause:
-                i = abs(v) - 1
-                if v > 0:
-                    pos_weights[i] += 1
-                else:
-                    neg_weights[i] += 1
-
-        return pos_weights, neg_weights           
-
+        return pos_weights, neg_weights    
 
 
 
