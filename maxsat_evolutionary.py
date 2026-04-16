@@ -28,18 +28,21 @@ def _fitness(pop, clause_lits, clause_offsets):
 
 
 class GeneticAlgorithm:
-    def __init__(self, wdimacs):
+    def __init__(self, wdimacs, pop_size=1024, init_temp=1, tournament_k=3, mutation_rate_factor=1):
         #np.random.seed(21)
         self.N = wdimacs['N']
         self.M = wdimacs['M']
         self.clauses = wdimacs['clauses']
 
-        self.N_pop = 1024
-        self.N_parents = 256
-        self.N_child = 1024
-        self.N_elite = 32
+        self.N_pop = pop_size
+        self.N_parents = pop_size // 4
+        self.N_child = pop_size
+        self.N_elite = pop_size // 32
 
-        self.pm = 1 / self.N
+        self.init_temp = init_temp
+        self.tournament_k = tournament_k
+
+        self.pm = mutation_rate_factor / self.N
 
         # ----- Heuristics
         pos_w, neg_w = self.generate_heuristic_weights()
@@ -67,12 +70,10 @@ class GeneticAlgorithm:
 
         gen = 0
         while time.time() - start_time < time_budget:
-            parents = self.tournament_selection(pop, fit, k=4)
+            parents = self.tournament_selection(pop, fit)
 
             children = self.crossover(parents)
             pop_child = self.mutation(children, self.pm)
-
-            #pop_child = self.heuristic_improvement_operator(pop_child)
 
             fit_child = self.fitness(pop_child)
             pop, fit = self.replacement(pop, pop_child, fit, fit_child)
@@ -93,30 +94,26 @@ class GeneticAlgorithm:
         return init_pop
     
 
-    def initialise(self, temperature=1.0):
-        def _default_prob_fn(weights, temperature=1.0):
+    def initialise(self):
+        def _default_prob_fn(weights, temperature):
             return 1.0 / (1.0 + np.exp(-weights / temperature))
 
         total_w = self.pos_w - self.neg_w  # shape: (N,)
-        probs = _default_prob_fn(total_w, temperature)
+        probs = _default_prob_fn(total_w, self.init_temp)
 
         init_pop = np.random.rand(self.N_pop, self.N) < probs
 
         return init_pop
 
-
-    #def heuristic_improvement_operator(self, p):
-    #    return p
-
     def fitness(self, p):
         return _fitness(p.astype(bool), self.clause_lits, self.clause_offsets)
 
-    def tournament_selection(self, p, fit, k=2):
+    def tournament_selection(self, p, fit):
         N = p.shape[0]
         parents = []
 
         for _ in range(self.N_parents):
-            idx = np.random.randint(0, N, size=k)
+            idx = np.random.randint(0, N, size=self.tournament_k)
             winner = idx[np.argmax(fit[idx])]
             parents.append(p[winner])
 
