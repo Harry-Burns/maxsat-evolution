@@ -32,6 +32,7 @@ class GeneticAlgorithm:
         #np.random.seed(21)
         self.N = wdimacs['N']
         self.M = wdimacs['M']
+        self.M = wdimacs['M']
         self.clauses = wdimacs['clauses']
 
         self.N_pop = pop_size
@@ -66,6 +67,7 @@ class GeneticAlgorithm:
         start_time = time.time()
 
         pop = self.initialise()
+        pop = self.initialise()
         fit = self.fitness(pop)
 
         gen = 0
@@ -84,6 +86,7 @@ class GeneticAlgorithm:
         best_i = np.argmax(fit)
         
         runtime = gen * max(self.N_child, self.N_pop)
+        result = {'t': runtime, 'nsat': fit[best_i], 'xbest': pop[best_i], 'gen': gen, 'pop_size': max(self.N_child, self.N_pop)}
         result = {'t': runtime, 'nsat': fit[best_i], 'xbest': pop[best_i], 'gen': gen, 'pop_size': max(self.N_child, self.N_pop)}
         return result
 
@@ -116,6 +119,7 @@ class GeneticAlgorithm:
             idx = np.random.randint(0, N, size=self.tournament_k)
             winner = idx[np.argmax(fit[idx])]
             parents.append(p[winner])
+
 
         return np.array(parents)
         
@@ -181,6 +185,19 @@ class GeneticAlgorithm:
         return p, fit
 
 
+    def generate_heuristic_weights(self):
+        pos_weights = np.zeros(self.N, dtype=int)
+        neg_weights = np.zeros(self.N, dtype=int)
+
+        for clause in self.clauses:
+            for v in clause:
+                i = abs(v) - 1
+                if v > 0:
+                    pos_weights[i] += 1
+                else:
+                    neg_weights[i] += 1
+
+        return pos_weights, neg_weights           
     def generate_heuristic_weights(self):
         pos_weights = np.zeros(self.N, dtype=int)
         neg_weights = np.zeros(self.N, dtype=int)

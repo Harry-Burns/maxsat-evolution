@@ -10,7 +10,7 @@ def maxsat_param_test():
 # endregion
 
 # region Question 3 - With Lookup - Question 5 (parameter testing)
-def maxsat_evolution_lookup_str(wdimacs_str, time_budget, repetitions):
+def maxstat_evolution_lookup_str(wdimacs_str, time_budget, repetitions):
     from import_wdimacs import import_wdimacs
     from maxsat_evolutionary import GeneticAlgorithm
     from data.mse_lookup import lookup
@@ -48,7 +48,7 @@ def maxsat_evolution_lookup_str(wdimacs_str, time_budget, repetitions):
 
 
 # region Question 3
-def maxsat_evolution_str(wdimacs_str, time_budget, repetitions):
+def maxstat_evolution_str(wdimacs_str, time_budget, repetitions):
     from import_wdimacs import import_wdimacs
     from maxsat_evolutionary import GeneticAlgorithm
 
@@ -123,10 +123,10 @@ if __name__ == "__main__":
         out = wdimacs_str(args.assignment, args.wdimacs)
 
     elif args.question == 3:
-        out = maxsat_evolution_str(args.wdimacs, args.time_budget, args.repetitions)
+        out = maxstat_evolution_str(args.wdimacs, args.time_budget, args.repetitions)
 
     elif args.question == 1000:
-        out = maxsat_evolution_lookup_str(args.wdimacs, args.time_budget, args.repetitions)
+        out = maxstat_evolution_lookup_str(args.wdimacs, args.time_budget, args.repetitions)
 
     elif args.question == 5:
         out = maxsat_param_test()
