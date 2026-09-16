@@ -3,3 +3,6 @@ __pycache__
 
 data/mse17-complete-unweighted-benchmarks.zip
 data/mse17-complete-unweighted-benchmarks
+
+# course handout - do not publish
+.assignment/
